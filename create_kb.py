@@ -26,7 +26,7 @@ def create_kb(kb_directory, kb_name, json_file):
     embedding_list = []
 
     json_medical = json.load(open(json_file, 'r', encoding='utf-8'))
-    for i, key in enumerate(json_medical[:9733]):
+    for i, key in enumerate(json_medical):
         name = key.split('\n')[0]
         query_list.append(key)
         embedding_list.append(model.encode(name))
@@ -44,7 +44,7 @@ def create_kb(kb_directory, kb_name, json_file):
     client.persist()
 
 
-create_kb('./kb_data',  'drug_kb', './data/drug_disease_json.json')
+create_kb('./kb_data',  'drug_kb', './data/drug_json.json')
 
 
 
