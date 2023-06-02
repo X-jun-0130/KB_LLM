@@ -7,5 +7,6 @@ pip install chroma
 
 ### Embedding
 chroma内部自带的sentence-transformers里的几个向量算法，测试下来不咋样
+
 使用了text2vec-base-chinese
 
