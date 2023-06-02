@@ -3,6 +3,7 @@
 
 ### 向量库
 Chroma [https://docs.trychroma.com/]
+
 pip install chroma
 
 ### Embedding
