@@ -1,43 +1,71 @@
 from search_query import Search_Query
-from transformers import AutoTokenizer, AutoModelForCausalLM,GenerationConfig
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
+import uvicorn
+import json
+from fastapi.encoders import jsonable_encoder
+import requests
 
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "6"
+app = FastAPI()
 
-model_name = '/Nlp_2023/Dialogue_Bloom/Bloom_dialogue/'
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name).half().cuda()
-model.eval()
+app.add_middleware(
+	CORSMiddleware,
+	# 允许跨域的源列表，例如 ["http://www.example.org"] 等等，["*"] 表示允许任何源
+	allow_origins=["*"],
 
-def generate(input):
-    inputs = tokenizer.encode(input, return_tensors="pt").to("cuda")
+	# 跨域请求是否支持 cookie，默认是 False，如果为 True，allow_origins 必须为具体的源，不可以是 ["*"]
+	allow_credentials=False,
 
-    generation_config = GenerationConfig(
-        temperature=0.2,
-        top_k=30,
-        top_p=0.85,
-        repetition_penalty=1.2,
-        do_sample=True,
-        min_new_tokens=32,
-        max_new_tokens=1024,
-        )
-    outputs = model.generate(inputs=inputs, generation_config=generation_config)
-    output = tokenizer.decode(outputs[0])
-    return output.strip('</s>')
+	# 允许跨域请求的 HTTP 方法列表，默认是 ["GET"]
+	allow_methods=["*"],
+    
+	# 允许跨域请求的 HTTP 请求头列表，默认是 []，可以使用 ["*"] 表示允许所有的请求头
+	# 当然 Accept、Accept-Language、Content-Language 以及 Content-Type 总之被允许的
+	allow_headers=["*"],
+	# 可以被浏览器访问的响应头, 默认是 []，一般很少指定
+	# expose_headers=["*"]
+	# 设定浏览器缓存 CORS 响应的最长时间，单位是秒。默认为 600，一般也很少指定
+	# max_age=1000
+)
 
-query_list = ['虚寒胃痛颗粒每次吃多少']
 
-for payload in query_list:
-    input_list = Search_Query(payload)
-    pre_input = 'User:'+ query_list[0] + '</s>\n Assistant:'
-    pre_out = generate(pre_input)
-    pre_out = pre_out.replace(pre_input, '')
-    print(f"模型原始输出: {pre_out}")
-    print("="*70+" 模型输入输出 "+"="*70)
+class Message(BaseModel):
+    role: str = Field(regex='^(User)$')
+    content: str = ''
 
+class ChatRequest(BaseModel):
+    messages: List[Message]
+    stream: bool = False
+
+
+def get_response(mes):
+    Post_url = "http://127.0.0.1:5053/worker_generate"
+    r_json = requests.post(Post_url, mes)
+    text = json.loads(r_json.text)
+    return text['message']
+
+
+@app.post("/kb_example/", summary='知识库测试用例')
+async def get_answer(item: ChatRequest):
+    input_dict = jsonable_encoder(item)
+    query = input_dict['messages'][0]['content']
+    input_list = Search_Query(query)
+    result={'prompt':'', 'answer':''}
     if len(input_list) > 0:
-        input_text = 'User:'+input_list[0][0] + '\n请仔细阅读上述文本，并回答下面的问题。\n'+ payload + '</s>\n Assistant:'
-        print(input_text)
-        out = generate(input_text )
-        out = out.replace(input_text, '')
-        print(f"模型知识库输出: {out}")
+        input_text = '上下文:\n'+ '\n\n'.join(input_list[0]) + '\n\n'+ '根据上下文，来回答问题。如果无法从中得到答案，请说 “文本中未提及。”。' + '\n问题是:'+query
+        input_dict['messages'][0]['content'] = input_text
+        res = get_response(json.dumps(input_dict))
+
+        result['prompt'] = input_text
+        if res =='':
+            result['answer'] = '文本过长无法处理'
+        else:
+            result['answer'] = res
+    else:
+        pass
+    return result
+
+if __name__ == "__main__":
+    uvicorn.run("llm_kb_function:app", host="0.0.0.0", port=5052)
