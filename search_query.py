@@ -20,7 +20,7 @@ def Search_Query(query):
     results = collection.query(
         query_embeddings=[emb],
         # query_texts=query,
-        n_results=1,
+        n_results=2,
         # where={"metadata_field": "is_equal_to_this"}, # optional filter
         # where_document={"$contains":"search_string"}  # optional filter
         )['documents']
