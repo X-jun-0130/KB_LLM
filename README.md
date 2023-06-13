@@ -43,8 +43,8 @@ turn 1:
     Assistant:xxx</s>                                               [模型第二次输出，最终输出]
     
 turn 2:
-	User:输入问题2</s>
-	Thought:这个问题可以直接回答，无需调用知识库API。</s> 
-	Search:None</s>
-	Assistant:xxx</s>
+    User:输入问题2</s>
+    Thought:这个问题可以直接回答，无需调用知识库API。</s> 
+    Search:None</s>
+    Assistant:xxx</s>
 ```
